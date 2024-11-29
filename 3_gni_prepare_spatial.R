@@ -71,9 +71,6 @@ adm0Gnic <- adm0_comb_interpExtrap %>%
   summarise(nNat = n_distinct(iso3))
 
 
-
-# lifexp missing for some admin areas in TUV
-
 # replace NA ratio with 1; i.e. we use national value for those
 adm1_ratioAdm1Adm0_interp[is.na(adm1_ratioAdm1Adm0_interp)] <- 1
 
@@ -90,7 +87,7 @@ if (file.exists('data_gis/GDL_regions_v7.gpkg')){
   HDI_GADM_polyg <- read_sf('data_gis/GDL_regions_v7.gpkg') 
 } else { 
   # create it
-  HDI_polyg <- read_sf('data_gis/GDL Shapefiles V6/shdi2022_World_large.shp') %>% 
+  HDI_polyg <- read_sf('data_gis/GDL Shapefiles V6.1/shdi2022_World_large.shp') %>% 
     mutate(iso_code = ifelse(iso_code == 'XKO', 'KSV', iso_code)) %>% # kosovo to correct iso3
     # some iso_codes missing; let's fill those
     mutate(iso3fill = substr(gdlcode,start = 1, stop=3)) %>% 
@@ -257,7 +254,7 @@ if (file.exists('data_gis/HDI_Adm0Adm1_raster_5arcmin_v7.tif')){
 
 source('functions/f_hdi_adm1_data2raster.R')
 
-varNames <- 'gnic' #c('lifexp', 'gnic',  'esch',  'msch' , 'gdi','cci')
+varNames <- 'gnic' 
 
 for (iVar in 1:length(varNames)) {
   
@@ -288,12 +285,6 @@ if (file.exists('data_gis/GDL_regions_v7_simpl.gpkg')){
   HDI_GADM_polyg_simpl <- st_read('data_gis/GDL_regions_v7_simpl.gpkg') %>% 
     rename(admID = layer)
   
-  # HDI_GADM_polyg_simpl <- st_as_sf(raster::raster(HDI_boundary_raster_5arcmin))  %>% 
-  # 
-  #   sf::st_simplify(., preserveTopology = T, dTolerance = 0.1)
-  # 
-  # 
-  # st_write(HDI_GADM_polyg_simpl, 'data_gis/GDL_regions_v7_simpl.gpkg', delete_dsn=T)
   
 }
 

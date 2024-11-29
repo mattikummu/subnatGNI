@@ -22,19 +22,18 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 yearsIn <- 1990:2021
 
 
-r_adm0 <- rast(paste0('results/rast_adm0_gnic_',yearsIn[1],'_',yearsIn[length(yearsIn)],
+r_adm0 <- rast(paste0('results/rast_gnic_adm0_',yearsIn[1],'_',yearsIn[length(yearsIn)],
                              '.tif') ) 
 
-r_adm1 <- rast(paste0('results/rast_adm1_gnic_',yearsIn[1],'_',yearsIn[length(yearsIn)],
+r_adm1 <- rast(paste0('results/rast_gnic_',yearsIn[1],'_',yearsIn[length(yearsIn)],
                              '.tif') ) 
 
 
-p_adm0 <- st_read(paste0('results/vect_adm0_gnic_',yearsIn[1],'_',yearsIn[length(yearsIn)],'.gpkg'))
-v_adm0 <- vect(paste0('results/vect_adm0_gnic_',yearsIn[1],'_',yearsIn[length(yearsIn)],'.gpkg'))
+p_adm0 <- st_read(paste0('results/polyg_gnic_adm0_',yearsIn[1],'_',yearsIn[length(yearsIn)],'.gpkg'))
+v_adm0 <- vect(paste0('results/polyg_gnic_adm0_',yearsIn[1],'_',yearsIn[length(yearsIn)],'.gpkg'))
 
-p_adm1 <- st_read(paste0('results/vect_adm1_gnic_',yearsIn[1],'_',yearsIn[length(yearsIn)],'.gpkg'))
-v_adm1 <- vect(paste0('results/vect_adm1_gnic_',yearsIn[1],'_',yearsIn[length(yearsIn)],'.gpkg'))
-
+p_adm1 <- st_read(paste0('results/vect_gnic_',yearsIn[1],'_',yearsIn[length(yearsIn)],'.gpkg'))
+v_adm1 <- vect(paste0('results/vect_gnic_',yearsIn[1],'_',yearsIn[length(yearsIn)],'.gpkg'))
 
 
 #### 2. write rasters ----

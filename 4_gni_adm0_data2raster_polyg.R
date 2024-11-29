@@ -104,7 +104,7 @@ if (file.exists('data_gis/gdp_Adm0_raster_5arcmin.tif')){
   
   
   # aggregate to 5 arc-min
-  r_gdp_adm0_polyg_5arcmin <- terra::aggregate(r_gdp_adm0_polyg_1arcmin,fact=5,fun=modal,na.rm=T)
+  r_gdp_adm0_polyg_5arcmin <- terra::aggregate(r_gdp_adm0_polyg_1arcmin,fact=5,fun='modal',na.rm=T)
   
   
   # write raster
