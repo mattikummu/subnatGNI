@@ -9,6 +9,7 @@ f_Plot_sf_trend<-function(sf_in,column_in,breaks_in){
             palette = pal,
             breaks = breaks_in,
             midpoint = 0,
+            colorNA = "white",
             contrast = c(0, 0.7),
             lwd=0,
             legend.is.portrait = FALSE)+

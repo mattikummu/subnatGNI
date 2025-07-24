@@ -20,7 +20,7 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ### 1. preparations ------
 
 # 1.1 set time steps ------
-timestep <- c(seq(1990, 2021))
+timestep <- c(seq(1990, 2023))
 step <- c(seq(1,length(timestep)))
 
 ### 1.2 load cntry_info
@@ -47,8 +47,6 @@ GADM_data <- read_sf('/Users/mkummu/R/GIS_data_common/gadm_410-levels.gpkg', lay
 adm0_comb_interpExtrap <- read_csv('results/adm0_comb_interpExtrap.csv')
 adm1_ratioAdm1Adm0_interp <- read_csv('results/adm1_ratioAdm1Adm0_interp.csv')
 
-
-
 # 1.5 check missing data in adm1 data
 NAtemp <- adm1_ratioAdm1Adm0_interp %>% 
   drop_na()
@@ -72,22 +70,19 @@ adm0Gnic <- adm0_comb_interpExtrap %>%
 
 
 # replace NA ratio with 1; i.e. we use national value for those
-adm1_ratioAdm1Adm0_interp[is.na(adm1_ratioAdm1Adm0_interp)] <- 1
-
-
-
-
-
-
+adm1_ratioAdm1Adm0_interp <- adm1_ratioAdm1Adm0_interp %>% 
+  mutate(gnicRatio = ifelse(is.na(gnicRatio), 1, gnicRatio))
+  
+ 
 #### 2. create / load polygon data -----
 
 
-if (file.exists('data_gis/GDL_regions_v7.gpkg')){
+if (file.exists('data_gis/GDL_regions_v8.gpkg')){
   # load it
-  HDI_GADM_polyg <- read_sf('data_gis/GDL_regions_v7.gpkg') 
+  HDI_GADM_polyg <- read_sf('data_gis/GDL_regions_v8.gpkg') 
 } else { 
   # create it
-  HDI_polyg <- read_sf('data_gis/GDL Shapefiles V6.1/shdi2022_World_large.shp') %>% 
+  HDI_polyg <- read_sf('data_gis/GDL Shapefiles V6.5/GDL Shapefiles V6.5 large.shp') %>% 
     mutate(iso_code = ifelse(iso_code == 'XKO', 'KSV', iso_code)) %>% # kosovo to correct iso3
     # some iso_codes missing; let's fill those
     mutate(iso3fill = substr(gdlcode,start = 1, stop=3)) %>% 
@@ -219,13 +214,13 @@ if (file.exists('data_gis/GDL_regions_v7.gpkg')){
   test_HDI_GADM_polyg <-HDI_GADM_polyg  %>% 
     st_drop_geometry()
   
-  write_sf(HDI_GADM_polyg,'data_gis/GDL_regions_v7.gpkg')
+  write_sf(HDI_GADM_polyg,'data_gis/GDL_regions_v8.gpkg')
 }
 
 
 #  3. create adm0, adm1 raster -----------------------------------------------------
 
-if (file.exists('data_gis/HDI_Adm0Adm1_raster_5arcmin_v7.tif')){
+if (file.exists('data_gis/HDI_Adm0Adm1_raster_5arcmin_v8.tif')){
   # load it
   HDI_boundary_raster_5arcmin <- rast('data_gis/HDI_Adm0Adm1_raster_5arcmin_v7.tif')
 } else { 
@@ -244,7 +239,7 @@ if (file.exists('data_gis/HDI_Adm0Adm1_raster_5arcmin_v7.tif')){
   
   
   # write raster
-  terra::writeRaster(HDI_boundary_raster_5arcmin,'data_gis/HDI_Adm0Adm1_raster_5arcmin_v7.tif', gdal="COMPRESS=LZW",overwrite=TRUE)
+  terra::writeRaster(HDI_boundary_raster_5arcmin,'data_gis/HDI_Adm0Adm1_raster_5arcmin_v8.tif', gdal="COMPRESS=LZW",overwrite=TRUE)
 }
 
 
@@ -258,7 +253,7 @@ varNames <- 'gnic'
 
 for (iVar in 1:length(varNames)) {
   
-  rast_varName <- f_hdi_adm1_data2raster(inYears = 1990:2021, 
+  rast_varName <- f_hdi_adm1_data2raster(inYears = timestep, 
                                         IndexName = varNames[iVar], 
                                         inDataAdm0 = adm0_comb_interpExtrap, 
                                         inDataAdm1 = adm1_ratioAdm1Adm0_interp) 
@@ -270,9 +265,9 @@ for (iVar in 1:length(varNames)) {
 
 ### 5. simplify polygon layer ----
 
-if (file.exists('data_gis/GDL_regions_v7_simpl.gpkg')){
+if (file.exists('data_gis/GDL_regions_v8_simpl.gpkg')){
   # load it
-  HDI_GADM_polyg_simpl <- st_read('data_gis/GDL_regions_v7_simpl.gpkg') %>% 
+  HDI_GADM_polyg_simpl <- st_read('data_gis/GDL_regions_v8_simpl.gpkg') %>% 
     rename(admID = layer)
 } else { 
   # create it
@@ -280,9 +275,9 @@ if (file.exists('data_gis/GDL_regions_v7_simpl.gpkg')){
   p <- as.polygons(HDI_boundary_raster_5arcmin)
   as.data.frame(p)
   
-  writeVector(p, 'data_gis/GDL_regions_v7_simpl.gpkg', overwrite=T)
+  writeVector(p, 'data_gis/GDL_regions_v8_simpl.gpkg', overwrite=T)
   
-  HDI_GADM_polyg_simpl <- st_read('data_gis/GDL_regions_v7_simpl.gpkg') %>% 
+  HDI_GADM_polyg_simpl <- st_read('data_gis/GDL_regions_v8_simpl.gpkg') %>% 
     rename(admID = layer)
   
   
@@ -299,7 +294,7 @@ varNames <- 'gnic' #c('lifexp', 'gnic',  'esch',  'msch' , 'gdi', 'cci')
 
 for (iVar in 1:length(varNames)) {
   
-  vect_varName <- f_hdi_adm1_data2gpkg(inYears = 1990:2021, 
+  vect_varName <- f_hdi_adm1_data2gpkg(inYears = timestep, 
                                       IndexName = varNames[iVar], 
                                       inDataAdm0 = adm0_comb_interpExtrap, 
                                       inDataAdm1 = adm1_ratioAdm1Adm0_interp) 

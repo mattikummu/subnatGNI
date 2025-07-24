@@ -17,7 +17,7 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ### 1. preparations ------
 
 # 1.1 set time steps ------
-timestep <- c(seq(1990, 2021))
+timestep <- c(seq(1990, 2023))
 step <- c(seq(1,length(timestep)))
 
 ### 1.2 load cntry_info
@@ -32,12 +32,12 @@ cntry_info <- read_csv("input/cntry_ids.csv") %>%
 
 # UN national database
 # https://hdr.undp.org/data-center/documentation-and-downloads
-UN_HDI_db <- read_csv('input/HDR23-24_Composite_indices_complete_time_series.csv') %>% 
+UN_HDI_db <- read_csv('input/HDR25_Composite_indices_complete_time_series.csv') %>% 
   mutate(iso3 = ifelse(iso3 == 'XKO', 'KSV', iso3))
 
 
 # SHDI national data
-SHDI_data <- read_csv('input/SHDI-SGDI-Total 7.0.csv') %>% 
+SHDI_data <- read_csv('input/SHDI-SGDI-Total 8.0.csv') %>% 
   rename(iso3 = iso_code) %>% 
   mutate(iso3 = ifelse(iso3 == 'XKO', 'KSV', iso3)) %>% # kosovo to correct iso3
   filter(region == 'Total')  # only national data
@@ -45,21 +45,39 @@ SHDI_data <- read_csv('input/SHDI-SGDI-Total 7.0.csv') %>%
 
 #### 2.2 income ----
 
+# GNI per capita, PPP (constant 2021 international $)
+
+# Perform the operations
+UN_HDI_gnipc_NRU_TUV <- UN_HDI_db %>%
+  select(iso3, country, paste0('gnipc_', timestep)) %>% 
+  filter(iso3 %in% c("NRU", "TUV")) 
 
 
-# GNI per capita, PPP (constant 2017 international $)
+# Compute the ratio needed for transformation
+compute_ratio <- UN_HDI_gnipc_NRU_TUV %>%
+  filter(iso3 == "NRU") %>%
+  transmute(ratio = gnipc_2005 / UN_HDI_db$gnipc_2005[UN_HDI_db$iso3 == "TUV"])
 
-# first years of Nauru scaled with Tuvalu, as extrapolation resulted negative values
-NRU_gnipc <- as_tibble(read.xlsx("input/nauru_gnic.xlsx", startRow = 1)) %>% 
-  filter(iso3 == "NRU") %>% 
-  select(iso3, country, paste0('gnipc_',1990:2021))
+
+UN_HDI_gnipc_NRU_TUV_filled <- UN_HDI_gnipc_NRU_TUV %>%
+  mutate(across(starts_with("gnipc_"), ~ ifelse(is.na(.) & iso3 == "NRU", {
+    cur_col <- cur_column()
+    UN_HDI_db[[cur_col]][UN_HDI_db$iso3 == "TUV"] * compute_ratio$ratio
+  }, .))) %>% 
+  filter(iso3 == "NRU")
+
+# 
+# # first years of Nauru scaled with Tuvalu, as extrapolation resulted negative values
+# NRU_gnipc <- as_tibble(read.xlsx("input/nauru_gnic.xlsx", startRow = 1)) %>% 
+#   filter(iso3 == "NRU") %>% 
+#   select(iso3, country, paste0('gnipc_',timestep))
 
 UN_HDI_gnipc <- UN_HDI_db %>% 
-  select(iso3, country, paste0('gnipc_',1990:2021)) %>% 
+  select(iso3, country, paste0('gnipc_',timestep)) %>% 
   filter(nchar(iso3) == 3) %>% # filter out regional values
   filter(!if_all(contains('gnipc'), is.na)) %>% # exclude rows without data
   filter(!iso3 == "NRU") %>% 
-  bind_rows(NRU_gnipc)
+  bind_rows(UN_HDI_gnipc_NRU_TUV_filled) # add NRU data
 
 
 
@@ -88,38 +106,39 @@ WB_data_gnipc <- read.csv('input/API_NY/API_NY.GNP.PCAP.PP.KD_DS2_en_csv_v2_2051
   rename(iso3 = Country.Code) %>% 
   rename(country = Country.Name) %>% 
   mutate(iso3 = ifelse(iso3 == 'XKX', 'KSV', iso3)) %>% # kosovo to correct iso3
-  select(iso3, country, paste0('X',1990:2021)) %>% 
-  set_names('iso3', 'country', paste0('gnipc_',1990:2021)) %>% 
+  select(iso3, country, paste0('X',timestep)) %>% 
+  set_names('iso3', 'country', paste0('gnipc_',timestep)) %>% 
   filter(iso3 %in% cntry_info$iso_code) %>%  # exlude regional rows
   filter(!if_all(contains('gnipc_'), is.na))  %>%  # exclude rows without data
   filter(!iso3=='PRK') %>% 
   bind_rows(PRK_gnipc)
 
-
-indexValue <- as_tibble(readxl::read_xls("input/annual-index-value_annual-percent-change.xls", skip = 3)) %>%
-  set_names(c('year', 'index', 'change'))  %>%
-  filter(year %in% c(2017,2021))
-
-index2017_2021 <- indexValue$index[1] /  indexValue$index[2]
-
-WB_data_gnipc_Scaled <- WB_data_gnipc %>%
-  mutate_if(is.numeric, ~.*!!index2017_2021)
+# 
+# indexValue <- as_tibble(readxl::read_xls("input/annual-index-value_annual-percent-change.xls", skip = 3)) %>%
+#   set_names(c('year', 'index', 'change'))  %>%
+#   filter(year %in% c(2017,2021))
+# 
+# index2017_2021 <- indexValue$index[1] /  indexValue$index[2]
+# 
+# WB_data_gnipc_Scaled <- WB_data_gnipc %>%
+#   mutate_if(is.numeric, ~.*!!index2017_2021)
   
 
 SHDI_data_gnipc <- SHDI_data %>% 
   select(iso3, country, year, gnic) %>% 
   pivot_wider( names_from = year, values_from = gnic) %>% 
-  set_names('iso3', 'country', paste0('gnipc_',1990:2021)) %>% 
+  set_names('iso3', 'country', paste0('gnipc_',1990:2022)) %>% 
+  mutate('gnipc_2023' = NA) %>% 
   filter(!if_all(contains('gnipc_'), is.na))  # exclude rows without data
 
 
 # combine UN and WB and SHDI
 UN_HDI_gnipc_combWB <- UN_HDI_gnipc %>% 
-  bind_rows(WB_data_gnipc_Scaled %>% filter(!iso3 %in% UN_HDI_gnipc$iso3)) 
+  bind_rows(WB_data_gnipc %>% filter(!iso3 %in% UN_HDI_gnipc$iso3)) 
 
 UN_HDI_gnipc_combWB_SHDI <-UN_HDI_gnipc_combWB %>% 
   bind_rows(SHDI_data_gnipc %>% filter(!iso3 %in% UN_HDI_gnipc_combWB$iso3)) %>% 
-  set_names('iso3', 'country', paste0(1990:2021)) %>% 
+  set_names('iso3', 'country', paste0(timestep)) %>% 
   pivot_longer(-c(iso3, country), names_to = 'year', values_to = 'gnic')
 
 
@@ -241,7 +260,15 @@ if (file.exists('data_GIS/p_adm0_centroids.gpkg')) {
 
 # indicators:  lifexp  gnic  esch  msch gdi
 
-gnic_interpExtrap <- f_interpExtrap_adm0(nameIndic = 'gnic')
+
+if (dir.exists('data_out/')) {
+  
+} else {
+  dir.create('data_out/')  
+}
+
+
+gnic_interpExtrap <- f_interpExtrap_adm0(nameIndic = 'gnic', yearRange = timestep)
 
 adm0_comb_interpExtrap <- gnic_interpExtrap
 

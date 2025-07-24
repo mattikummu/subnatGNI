@@ -1,6 +1,6 @@
 
 
-f_hdi_Adm1_interp <- function(variableName) {
+f_hdi_Adm1_interp <- function(variableName = 'gnic') {
   
   adm0_data_SHDI <- HDI_data_filled %>% 
     filter(level == 'National') %>% 
@@ -22,6 +22,15 @@ f_hdi_Adm1_interp <- function(variableName) {
     select(iso3, GDLCODE, year, ratioAdm1Adm0) %>% 
     # make sure that all years are included
     pivot_wider(names_from = 'year', values_from = 'ratioAdm1Adm0') %>% 
+    # --- The dplyr way to conditionally add the column ---
+    {
+      .data <- . # Capture the current data frame from the pipe
+      if (!("2023" %in% colnames(.data))) {
+        .data %>% mutate('2023' = NA_real_)
+      } else {
+        .data # Pass the data through unchanged if '2023' already exists
+      }
+    } %>% 
     pivot_longer(-c(iso3, GDLCODE), names_to = 'year', values_to = 'ratioAdm1Adm0') %>% 
     # in lifexp for two adm1 regions no data, we use national data; i.e. ratio = 1
     mutate(ratioAdm1Adm0 = ifelse(iso3 == "TUV" & is.na(ratioAdm1Adm0), 1,  ratioAdm1Adm0) ) %>% 

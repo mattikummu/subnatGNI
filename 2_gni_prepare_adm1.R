@@ -17,7 +17,7 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ### 1. preparations ------
 
 # 1.1 set time steps ------
-timestep <- c(seq(1990, 2021))
+timestep <- c(seq(1990, 2022))
 step <- c(seq(1,length(timestep)))
 
 ### 1.2 load cntry_info
@@ -36,11 +36,11 @@ cntry_info_temp <- cntry_info %>%
 ### 2. read admin 1 data -----
 
 
-HDI_data <- read_csv('input/SHDI-SGDI-Total 7.0.csv') %>% 
+HDI_data <- read_csv('input/SHDI-SGDI-Total 8.0.csv') %>% 
   mutate(iso_code = ifelse(iso_code == 'XKO', 'KSV', iso_code)) %>% # kosovo to correct iso3
   #bind_rows(HDI_taiwan) %>%  # add Taiwan
   rename(iso3 = iso_code) %>% 
-  select(iso3, country, year, GDLCODE, level,  gnic) 
+  select(iso3, country, region, year, GDLCODE, level,  gnic) 
 
 
 HDI_data_filled <- HDI_data 
@@ -70,7 +70,8 @@ source('functions/f_hdi_Adm1_interp.R')
 st_hdiComponent_gnic <- f_hdi_Adm1_interp('gnic') 
 
 
-adm1_ratioAdm1Adm0_interp <- st_hdiComponent_gnic
+adm1_ratioAdm1Adm0_interp <- st_hdiComponent_gnic %>% 
+  left_join(HDI_data %>% select(GDLCODE, region) %>% distinct())
 
 
 write_csv(adm1_ratioAdm1Adm0_interp, 'results/adm1_ratioAdm1Adm0_interp.csv')

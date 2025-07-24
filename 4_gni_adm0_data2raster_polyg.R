@@ -7,6 +7,7 @@
 library(openxlsx)
 library(zoo)
 library(broom)
+library(mblm)
 
 library(sf)
 library(terra)
@@ -20,7 +21,7 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ### 1. preparations ------
 
 # 1.1 set time steps ------
-timestep <- c(seq(1990, 2021))
+timestep <- c(seq(1990, 2023))
 step <- c(seq(1,length(timestep)))
 
 ### 1.2 load cntry_info
@@ -120,7 +121,7 @@ varNames <- c('gnic' )
 
 for (iVar in 1:length(varNames)) {
   
-  rast_varName <- f_hdi_adm0_data2raster(inYears = 1990:2021, 
+  rast_varName <- f_hdi_adm0_data2raster(inYears = 1990:2023, 
                                          IndexName = varNames[iVar], 
                                          inDataAdm0 = adm0_comb_interpExtrap) 
   
@@ -165,7 +166,7 @@ varNames <- c('gnic')
 
 for (iVar in 1:length(varNames)) {
   
-  vect_varName <- f_hdi_data2gpkg(inYears = 1990:2021, 
+  vect_varName <- f_hdi_data2gpkg(inYears = 1990:2023, 
                                       IndexName = varNames[iVar], 
                                       inDataAdm0 = adm0_comb_interpExtrap) 
   

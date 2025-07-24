@@ -18,6 +18,9 @@ f_interpExtrap_adm0 <- function(nameIndic, yearRange = 1990:2021) {
     filter(year %in% yearRange) %>% 
     pivot_wider(names_from = 'year', values_from = !!nameIndic) 
   
+  write_csv(indicWider, "data_out/indicWider.csv")
+  
+  
   # full timeseries
   dataFull <- indicWider %>% 
     set_names(c('iso3', paste0('n',yearRange))) %>% 
@@ -94,7 +97,7 @@ f_interpExtrap_adm0 <- function(nameIndic, yearRange = 1990:2021) {
       bind_rows(collectFilledData_nearlyFullWide )
   }
   
-  
+  write_csv(dataFull_NearlyFull, "data_out/dataFull_NearlyFull.csv")
   
   
   # #### for countries with less than 5 observations, we'll use trend from the closest country with full or nearly full data ----

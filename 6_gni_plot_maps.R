@@ -18,16 +18,16 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
 ### 1. load data ----
 
-sf_gnic <- read_sf('results/vect_gnic_1990_2021.gpkg') %>% 
+sf_gnic <- read_sf('results/vect_gnic_1990_2023.gpkg') %>% 
   mutate(slope = slope*32) %>% 
-  rename(log10_2021 = '2021') %>% 
-  mutate(log10_2021 = log10(log10_2021)) %>% 
+  rename(log10_2023 = '2021') %>% 
+  mutate(log10_2023 = log10(log10_2023)) %>% 
   filter(!iso3 == 'ATA')
 
-sf_gnic_adm1 <- read_sf('results/vect_gnic_1990_2021.gpkg') %>% 
+sf_gnic_adm1 <- read_sf('results/vect_gnic_1990_2023.gpkg') %>% 
   mutate(slope = slope*32) %>% 
-  rename(log10_2021 = '2021') %>% 
-  mutate(log10_2021 = log10(log10_2021)) %>% 
+  rename(log10_2023 = '2021') %>% 
+  mutate(log10_2023 = log10(log10_2023)) %>% 
   rename(log10_1990 = '1990') %>% 
   mutate(log10_1990 = log10(log10_1990)) %>% 
   filter(!iso3 == 'ATA')
@@ -39,22 +39,23 @@ sf_adm0 <- read_sf("data_gis/ne_50m_adm0_all_ids/adm0_NatEarth_all_ids.shp") %>%
   st_as_sf() %>% 
   filter(!iso_a3 == 'ATA')
 
-r_gnic_2021 <- subset(rast('results/rast_gnic_1990_2021.tif'), 32)
+r_gnic_2023 <- subset(rast('results/rast_gnic_1990_2023.tif'), 34)
 
 
-writeRaster(x = r_gnic_2021,
-            filename = "results/r_gnic_2021.tif", gdal="COMPRESS=LZW",overwrite=T)
+writeRaster(x = r_gnic_2023,
+            filename = "results/r_gnic_2023.tif", gdal="COMPRESS=LZW",overwrite=T)
 
 
 
 
 ### 2. check how many people live in subnational areas we have data for  ----
 
-r_popCount <- rast('data_gis/r_pop_GHS_1990_2022_5arcmin.tif')
+r_popCount <- subset(terra::rast("../subnatGini/data_gis/r_pop_GHS_1985_2025_5arcmin.tif"), 6:39)
+names(r_popCount) <- paste0('pop', c(1990:2023))
 
-globPop <- global(subset(r_popCount,32), fun=sum, na.rm=T)
+globPop <- global(subset(r_popCount,34), fun=sum, na.rm=T)
 
-ext_in_x_pop <- exactextractr::exact_extract(x= subset(r_popCount,32),
+ext_in_x_pop <- exactextractr::exact_extract(x= subset(r_popCount,34),
                                              y= sf_gnic_adm1 %>% filter(admID > 1000), 
                                              fun='sum') %>% 
   as_tibble()
@@ -84,8 +85,8 @@ source('functions/f_Plot_sf_trend.R')
 
 ### 4.1 gnic
 
-minGnic <- quantile( sf_gnic_adm1$'log10_2021', .01, na.rm=T)
-maxGnic <- quantile( sf_gnic_adm1$'log10_2021', .99, na.rm=T) 
+minGnic <- quantile( sf_gnic_adm1$'log10_2023', .01, na.rm=T)
+maxGnic <- quantile( sf_gnic_adm1$'log10_2023', .99, na.rm=T) 
 
 log10gnicRange <- seq( plyr::round_any( minGnic,accuracy=0.1,f=floor ), 
                        plyr::round_any( maxGnic,accuracy=0.1,f=ceiling ) ,
@@ -102,7 +103,7 @@ slopeRange <- seq(round(minSlope,1),round(maxSlope,1),by=.05)
 p_gnicSlope <- f_Plot_sf_trend(sf_gnic_adm1,'slope',slopeRange)
 
 p_log10gnic_1990 <- f_Plot_sf_abs(sf_gnic_adm1,'log10_1990',log10gnicRange )
-p_log10gnic_2021 <- f_Plot_sf_abs(sf_gnic_adm1,'log10_2021',log10gnicRange )
+p_log10gnic_2023 <- f_Plot_sf_abs(sf_gnic_adm1,'log10_2023',log10gnicRange )
 
 
 
@@ -118,11 +119,11 @@ if (dir.exists('figures/figGnic/')) {
   dir.create('figures/figGnic/')  
 }
 
-layers <- list(p_gnicSlope, p_log10gnic_1990, p_log10gnic_2021) 
+layers <- list(p_gnicSlope, p_log10gnic_1990, p_log10gnic_2023) 
 # p_giniDisp_adm1_1990, p_giniDisp_adm0_1990,
 # p_giniDispSlope_adm1, p_giniDispSlope_adm0)
 
-nameLayers <- c('p_gnicSlope', 'p_log10gnic_1990','p_log10gnic_2021')
+nameLayers <- c('p_gnicSlope', 'p_log10gnic_1990','p_log10gnic_2023')
 # 'p_giniDisp_adm1_1990', 'p_giniDisp_adm0_1990',
 # 'p_giniDispSlope_adm1', 'p_giniDispSlope_adm0')
 
@@ -131,24 +132,26 @@ for (i in 1:length(layers)) {
   p_fig <- layers[[i]] + 
     tm_layout(legend.show=FALSE)
   
-  tmap_save(p_fig,filename = paste0('figures/figGnic/fig_',nameLayers[i],'.png'),width = 80, units='mm', dpi = 450)
+  p_fig_legend <- layers[[i]]
   
+  tmap_save(p_fig,filename = paste0('figures/figGnic/fig_',nameLayers[i],'.png'),width = 80, units='mm', dpi = 450)
+  tmap_save(p_fig_legend,filename = paste0('figures/figGnic/fig_legend_',nameLayers[i],'.png'),width = 80, units='mm', dpi = 450)
 }
 
 
 
 
-p_gnic <- tmap_arrange(p_log10gnic_2021, p_gnicSlope,
+p_gnic <- tmap_arrange(p_log10gnic_2023, p_gnicSlope,
                        ncol = 2)
 
-tmap_save(p_gnic,filename = paste0('figures/fig1_gnic2021_slope',Sys.Date(),'.pdf'),width = 180, height=60, units='mm')
+tmap_save(p_gnic,filename = paste0('figures/fig1_gnic2023_slope.pdf'),width = 180, height=60, units='mm')
 
 
 #### 5. range and mean interval of subnational data -----
 
 
 
-sf_dataReported_range <- read_csv('input/SHDI-SGDI-Total 7.0.csv') %>% 
+sf_dataReported_range <- read_csv('input/SHDI-SGDI-Total 8.0.csv') %>% 
   mutate(iso_code = ifelse(iso_code == 'XKO', 'KSV', iso_code)) %>% # kosovo to correct iso3
   #bind_rows(HDI_taiwan) %>%  # add Taiwan
   rename(iso3 = iso_code) %>% 
@@ -160,7 +163,7 @@ sf_dataReported_range <- read_csv('input/SHDI-SGDI-Total 7.0.csv') %>%
   mutate(rangeYear = as.numeric(maxYear) - as.numeric(minYear) + 1)
 
 
-sf_dataReported_nmbrObs <- read_csv('input/SHDI-SGDI-Total 7.0.csv') %>% 
+sf_dataReported_nmbrObs <- read_csv('input/SHDI-SGDI-Total 8.0.csv') %>% 
   mutate(iso_code = ifelse(iso_code == 'XKO', 'KSV', iso_code)) %>% # kosovo to correct iso3
   #bind_rows(HDI_taiwan) %>%  # add Taiwan
   rename(iso3 = iso_code) %>% 
@@ -174,7 +177,7 @@ sf_dataReported_nmbrObs <- read_csv('input/SHDI-SGDI-Total 7.0.csv') %>%
   group_by(iso3) %>% 
   summarise(nmbrObs = mean(nmbrObs))
 
-sf_dataReported_meanInterval <- read_csv('input/SHDI-SGDI-Total 7.0.csv') %>% 
+sf_dataReported_meanInterval <- read_csv('input/SHDI-SGDI-Total 8.0.csv') %>% 
   mutate(iso_code = ifelse(iso_code == 'XKO', 'KSV', iso_code)) %>% # kosovo to correct iso3
   #bind_rows(HDI_taiwan) %>%  # add Taiwan
   rename(iso3 = iso_code) %>% 
@@ -209,7 +212,7 @@ sf_adm0_gnicDataOrigin <- read_sf('results/polyg_gnic_adm0_1990_2021.gpkg') %>%
   #mutate(intervalMean_iso3 = ifelse(is.nan(intervalMean_iso3)&rangeYear>0, 1, intervalMean_iso3))
   filter(!iso3 == 'AIA')
 
-sf_gnicDataOrigin <- read_sf('results/vect_gnic_1990_2021.gpkg')
+sf_gnicDataOrigin <- read_sf('results/vect_gnic_1990_2023.gpkg')
 
 
 pal = scico(8, begin = 0.1, end = 0.9, direction = -1, palette = 'lapaz')

@@ -15,23 +15,63 @@ f_hdi_data2gpkg <- function(inYears = 1990:2021, IndexName = 'gnic',
   
   # calculate trend
   
-  # https://stackoverflow.com/questions/72922288/group-wise-linear-models-function-nest-by
+  if (IndexName == 'gnic') {
+    
+    
+    tempDataAdm0_trend <- tempDataAdm0 %>% 
+      group_by(GID_nmbr) %>% 
+      mutate(time = row_number()) %>% 
+      ungroup() %>% 
+      select(-year) %>% 
+      mutate(log10_gni_pc = log10(!!as.name(IndexName))) %>% 
+      drop_na() %>% 
+      nest(data = -GID_nmbr) %>% 
+      mutate(
+        model = map(data,  ~ mblm(log10_gni_pc ~ time, data = .))
+      ) %>% 
+      mutate(
+        tidy_summary = map(model, tidy)
+      ) %>% 
+      unnest(tidy_summary) %>% 
+      filter(term == 'time') %>% 
+      select(GID_nmbr, estimate, p.value)
+  } else {
+    
+    tempDataAdm0_trend <- tempDataAdm0 %>% 
+      group_by(GID_nmbr) %>% 
+      mutate(time = row_number()) %>% 
+      ungroup() %>% 
+      select(-year) %>% 
+      nest(data = -GID_nmbr) %>% 
+      mutate(
+        model = map(data,  ~ mblm(!!as.name(IndexName) ~ time, data = .))
+      ) %>% 
+      mutate(
+        tidy_summary = map(model, tidy)
+      ) %>% 
+      unnest(tidy_summary) %>% 
+      filter(term == 'time') %>% 
+      select(GID_nmbr, estimate, p.value)
+  }
   
-  tempDataAdm0_trend <- tempDataAdm0 %>% 
-    group_by(GID_nmbr) %>% 
-    mutate(time = row_number()) %>% 
-    ungroup() %>% 
-    select(-year) %>% 
-    nest(data = -GID_nmbr) %>% 
-    mutate(
-      model = map(data,  ~ lm( !!as.name(IndexName)  ~ time, data = .))
-    ) %>% 
-    mutate(
-      tidy_summary = map(model, tidy)
-    ) %>% 
-    unnest(tidy_summary) %>% 
-    filter(term == 'time') %>% 
-    select(GID_nmbr, estimate, p.value)
+  
+  
+  
+  # tempDataAdm0_trend <- tempDataAdm0 %>% 
+  #   group_by(GID_nmbr) %>% 
+  #   mutate(time = row_number()) %>% 
+  #   ungroup() %>% 
+  #   select(-year) %>% 
+  #   nest(data = -GID_nmbr) %>% 
+  #   mutate(
+  #     model = map(data,  ~ lm( !!as.name(IndexName)  ~ time, data = .))
+  #   ) %>% 
+  #   mutate(
+  #     tidy_summary = map(model, tidy)
+  #   ) %>% 
+  #   unnest(tidy_summary) %>% 
+  #   filter(term == 'time') %>% 
+  #   select(GID_nmbr, estimate, p.value)
   
   
   # # https://stackoverflow.com/questions/32274779/extracting-p-values-from-multiple-linear-regression-lm-inside-of-a-ddply-funct

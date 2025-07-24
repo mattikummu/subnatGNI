@@ -11,18 +11,23 @@ f_hdi_adm1_data2gpkg <- function(inYears = 1990:2021, IndexName = "gnic", inData
     dplyr::select(c(!!IndexName,year, cntry_id, admID, iso3))
   
   tempDataAdm1_Ratio <- inDataAdm1 %>% 
-    select(iso3, year, GDLCODE, !!ratioName) %>% 
+    select(iso3, year, GDLCODE, region, !!ratioName) %>% 
     left_join(cntry_info[,c(2,4)]) %>% 
     mutate(admID = cntry_id * 10000 + as.numeric( str_split(GDLCODE, "r", simplify = TRUE)[ , 2] ) ) %>% 
     left_join(tempDataAdm0[,1:3]) %>% 
     rename(adm0Value = !!IndexName) %>% 
     mutate(!!as.name(IndexName) := !!as.name(ratioName) * adm0Value) %>% 
-    dplyr::select(c(!!IndexName,year, 'admID', iso3))
+    dplyr::select(c(!!IndexName,year, 'admID', iso3, GDLCODE, region))
+  
+  admID_GDLCODE <- tempDataAdm1_Ratio %>% 
+    select(admID, GDLCODE, region) %>% 
+    distinct()
   
   tempDataAdm0Adm1 <- tempDataAdm0 %>% 
     filter(!iso3 %in% unique(tempDataAdm1_Ratio$iso3)) %>% 
     select(-cntry_id) %>% 
-    bind_rows(tempDataAdm1_Ratio) %>% 
+    bind_rows(tempDataAdm1_Ratio %>% 
+                select(-c(GDLCODE, region))) %>% 
     select(-iso3) %>% 
     drop_na() %>% 
     filter(!!IndexName > 0)
@@ -87,11 +92,12 @@ f_hdi_adm1_data2gpkg <- function(inYears = 1990:2021, IndexName = "gnic", inData
   tempDataAdm0Adm1_wTrend <- tempDataAdm0Adm1 %>% 
     pivot_wider(names_from = 'year', values_from = as.name(!!IndexName)) %>% 
     left_join(tempDataAdm0Adm1_trend) %>% 
-    mutate(p.value = p.value < 0.05) %>% 
+    mutate(p.value = p.value < 0.1) %>% 
     mutate(slope = p.value * estimate) %>% 
     right_join(HDI_GADM_polyg_simpl) %>% 
     left_join(HDI_GADM_polyg_noGeom) %>% 
-    select(admID, iso3, slope, everything()) 
+    left_join(admID_GDLCODE) %>% 
+    select(iso3, admID, GDLCODE, region, slope, everything()) 
   
   
   st_write(tempDataAdm0Adm1_wTrend,paste0('results/vect_',IndexName,'_',inYears[1],'_',inYears[length(inYears)],'.gpkg'), delete_dsn=T)
@@ -110,8 +116,8 @@ f_hdi_adm1_data2gpkg <- function(inYears = 1990:2021, IndexName = "gnic", inData
   
   HDI_boundary_raster_5arcmin[HDI_boundary_raster_5arcmin %in% as.numeric(as.matrix(idNoData))] <- NA
   
-  temp_id <-  as.numeric(tempDataAdm0Adm1_trend$admID)
-  temp_v <- as.numeric(tempDataAdm0Adm1_trend$estimate)
+  temp_id <-  as.numeric(tempDataAdm0Adm1_wTrend$admID)
+  temp_v <- as.numeric(tempDataAdm0Adm1_wTrend$slope)
   
   # reclassify
   slope_raster <- classify(HDI_boundary_raster_5arcmin,
